@@ -5,6 +5,7 @@
 #define SCREENWIDTH 720
 #define TARGETFPS 60
 #define LANE_WIDTH 2.0f
+#define HALF_LANE_WIDTH LANE_WIDTH / 2
 typedef struct {
   int lane;      // -1, 0, 1
   float visualX; // For smooth sliding between lanes
@@ -33,6 +34,7 @@ int main(void) {
   camera.projection = CAMERA_PERSPECTIVE;
   // -- GAME STATE --
   GameState gs = {0};
+  KeyboardState kb = {0};
   gs.cubeScale = 1.0f;
   // -- AUDIO ---
   InitAudioDevice(); // Initialize audio hardware
@@ -42,22 +44,11 @@ int main(void) {
   // If your song is 120 BPM, one beat happens every 0.5 seconds
   float currentBeat = (timePlayed * 120.0f) / 60.0f;
 BEGIN:
-  if (WindowShouldClose())
-    goto END;
   //------- KEYBOARD --------//
-  KeyboardState kb = {
-      .W = IsKeyDown(KEY_W),
-      .S = IsKeyDown(KEY_S),
-      .A = IsKeyDown(KEY_A),
-      .D = IsKeyDown(KEY_D),
-      .LEFT_CONTROL = IsKeyDown(KEY_LEFT_CONTROL),
-      .X = IsKeyDown(KEY_X),
-      .C = IsKeyDown(KEY_C),
-      .Z = IsKeyDown(KEY_Z),
-      .Q = IsKeyDown(KEY_Q),
-      .LEFT = IsKeyDown(KEY_LEFT),
-      .RIGHT = IsKeyDown(KEY_RIGHT),
-  };
+  kb.A = IsKeyDown(KEY_A);
+  kb.D = IsKeyDown(KEY_D);
+  kb.LEFT = IsKeyDown(KEY_LEFT);
+  kb.RIGHT = IsKeyDown(KEY_RIGHT);
   if ((kb.LEFT || kb.A) && gs.lane > -1)
     gs.lane--;
   if ((kb.RIGHT || kb.D) && gs.lane < 1)
@@ -79,10 +70,10 @@ BEGIN:
   // FLOOR
   DrawPlane((Vector3){0, 0, 0}, (Vector2){10, 100}, DARKGRAY);
   // LANES
-  DrawLine3D((Vector3){-LANE_WIDTH / 2, 0.01f, 50},
-             (Vector3){-LANE_WIDTH / 2, 0.01f, -50}, GRAY);
-  DrawLine3D((Vector3){LANE_WIDTH / 2, 0.01f, 50},
-             (Vector3){LANE_WIDTH / 2, 0.01f, -50}, GRAY);
+  DrawLine3D((Vector3){- HALF_LANE_WIDTH, 0.01f, 50},
+             (Vector3){- HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
+  DrawLine3D((Vector3){HALF_LANE_WIDTH, 0.01f, 50},
+             (Vector3){HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
   // PLAYER
   Vector3 cubePos = {gs.visualX, (gs.cubeScale * 0.5f), 0.0f};
   DrawCube(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, BLUE);
@@ -90,6 +81,9 @@ BEGIN:
   EndMode3D();
   DrawFPS(10, 10);
   EndDrawing();
+
+  if (WindowShouldClose())
+    goto END;
   goto BEGIN;
 END:
   CloseWindow();
