@@ -48,7 +48,7 @@
 1. **Check Exit Condition**
    - If `WindowShouldClose()` -> Goto END
 2. **Input Handling**
-   - Poll keyboard state into `KeyboardState` struct (stack allocated per frame)
+   - Poll keyboard state into `KeyboardState` struct 
    - If (LEFT or A) AND `lane` > -1 -> Decrement `lane`
    - If (RIGHT or D) AND `lane` < 1 -> Increment `lane`
 3. **Audio & Beat Logic**
@@ -81,13 +81,13 @@
 ## Input Map
 - **A / LEFT Arrow**: Move Lane Left (-1)
 - **D / RIGHT Arrow**: Move Lane Right (+1)
-- **Other Keys**: Polling active, no logic assigned (W, S, Q, Z, X, C, LCTRL)
+- **Other Keys**: Polling not active, no logic assigned (yet) (W, S, Q, Z, X, C, LCTRL)
 
 ## Known Issues
 - Music file path is hardcoded ("metrome.mp3"). Missing file causes runtime failure.
 - `UnloadMusicStream` is not called before exit; relies on OS cleanup.
 - Beat synchronization relies on `GetMusicTimePlayed` starting at 0; does not account for audio latency or buffer delay.
-- `KeyboardState` struct allocates memory on the stack every frame despite being temporary.
+- [FIXED] `KeyboardState` struct allocates memory on the stack every frame despite being temporary.
 - `GameState` fields `speed` and `distance` are defined but unused.
 - Variable `currentBeat` calculated during initialization is never used.
 
