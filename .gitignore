@@ -1,0 +1,9 @@
+# Binaries and Objects
+BeatCube
+*.o
+
+# Editor backups
+*~
+
+# Optional: if you don't want to track the music file
+# metrome.mp3

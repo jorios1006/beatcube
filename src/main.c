@@ -1,6 +1,8 @@
 #include "raylib.h"
 #include "raymath.h"
 #include <math.h>
+#define RLIGHTS_IMPLEMENTATION
+#include "../include/rlights.h"
 #define SCREENHEIGHT 400
 #define SCREENWIDTH 720
 #define TARGETFPS 60
@@ -38,11 +40,28 @@ int main(void) {
   gs.cubeScale = 1.0f;
   // -- AUDIO ---
   InitAudioDevice(); // Initialize audio hardware
-  Music music = LoadMusicStream("metrome.mp3");
+  Music music = LoadMusicStream("resources/audio/metrome.mp3");
   PlayMusicStream(music);
   float timePlayed = GetMusicTimePlayed(music);
   // If your song is 120 BPM, one beat happens every 0.5 seconds
   float currentBeat = (timePlayed * 120.0f) / 60.0f;
+
+  //--- SHADERS ---//
+  // 1. Load the shader (Raylib looks for these files on your disk)
+  Shader shader = LoadShader("resources/shaders/lighting.vs",
+                             "resources/shaders/lighting.fs");
+
+  // 2. Tell the shader where the "view position" (camera) is
+  shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+
+  // 3. Set ambient light (so the "dark" sides aren't pitch black)
+  int ambientLoc = GetShaderLocation(shader, "ambient");
+  float ambient[4] = {0.2f, 0.2f, 0.2f, 1.0f};
+  SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
+
+  // 4. Create a light (e.g., a "Sun" or a neon pulse)
+  Light sun = CreateLight(LIGHT_POINT, (Vector3){0, 4, 0}, Vector3Zero(), WHITE,
+                          shader);
 BEGIN:
   //------- KEYBOARD --------//
   kb.A = IsKeyDown(KEY_A);
@@ -62,22 +81,33 @@ BEGIN:
   //------- PHYSICS --------/
   gs.visualX = Lerp(gs.visualX, (float)gs.lane * LANE_WIDTH, 0.2f);
 
+  // --- SHADERS ---
+  // Update camera position in shader
+  float camPos[3] = {camera.position.x, camera.position.y, camera.position.z};
+  SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], camPos,
+                 SHADER_UNIFORM_VEC3);
+
+  // If you change light colors/positions based on music, call this:
+  UpdateLightValues(shader, sun);
+
   //------- DRAWING --------//
   BeginDrawing();
   ClearBackground(BLACK);
   //------- 3D --------//
   BeginMode3D(camera);
+  BeginShaderMode(shader); // <--- EVERYTHING between these two uses lighting
   // FLOOR
   DrawPlane((Vector3){0, 0, 0}, (Vector2){10, 100}, DARKGRAY);
   // LANES
-  DrawLine3D((Vector3){- HALF_LANE_WIDTH, 0.01f, 50},
-             (Vector3){- HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
+  DrawLine3D((Vector3){-HALF_LANE_WIDTH, 0.01f, 50},
+             (Vector3){-HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
   DrawLine3D((Vector3){HALF_LANE_WIDTH, 0.01f, 50},
              (Vector3){HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
   // PLAYER
   Vector3 cubePos = {gs.visualX, (gs.cubeScale * 0.5f), 0.0f};
   DrawCube(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, BLUE);
   DrawCubeWires(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, WHITE);
+  EndShaderMode();
   EndMode3D();
   DrawFPS(10, 10);
   EndDrawing();

@@ -1,29 +1,37 @@
-# Compiler
-CC = gcc
+# Compiler and Flags
+CC = gcc 
+CFLAGS = -Wall -Wextra -std=c99 -O2 -I./include 
+LDFLAGS = -lraylib -lm -lpthread -ldl -lrt -lX11 
 
 # Project Name
-TARGET = BeatCube
+TARGET = BeatCube 
 
-# Source Files
-SRC = main.c
-
-# Flags
-CFLAGS = -Wall -Wextra -std=c99 -O2
-LDFLAGS = -lraylib -lm -lpthread -ldl -lrt -lX11
+# Find all .c files in the src directory
+SRC = $(wildcard src/*.c)
+# Convert .c filenames to .o filenames in the obj directory
+OBJ = $(SRC:src/%.c=obj/%.o)
 
 # Default Target
-all: $(TARGET)
+all: prepare $(TARGET) 
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) $(LDFLAGS)
+# Create necessary directories
+prepare:
+	@mkdir -p obj bin
+
+# Link the final binary
+$(TARGET): $(OBJ) 
+	$(CC) $(CFLAGS) -o bin/$(TARGET) $(OBJ) $(LDFLAGS) 
+
+# Compile source files into object files
+obj/%.o: src/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # Clean Build Artifacts
-clean:
-	rm -f $(TARGET)
+clean: 
+	rm -rf obj bin 
 
 # Run Application
-run: $(TARGET)
-	./$(TARGET)
+run: all 
+	./bin/$(TARGET) 
 
-# Phony Targets
-.PHONY: all clean run
+.PHONY: all clean run prepare
