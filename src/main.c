@@ -41,25 +41,19 @@ int main(void) {
   // -- AUDIO ---
   InitAudioDevice(); // Initialize audio hardware
   Music music = LoadMusicStream("resources/audio/metrome.mp3");
+  if (!IsMusicValid(music))
+    goto EXIT;
   PlayMusicStream(music);
   float timePlayed = GetMusicTimePlayed(music);
-  // If your song is 120 BPM, one beat happens every 0.5 seconds
-  float currentBeat = (timePlayed * 120.0f) / 60.0f;
-
   //--- SHADERS ---//
-  // 1. Load the shader (Raylib looks for these files on your disk)
   Shader shader = LoadShader("resources/shaders/lighting.vs",
                              "resources/shaders/lighting.fs");
-
-  // 2. Tell the shader where the "view position" (camera) is
+  if (!IsShaderValid(shader))
+    goto EXIT;
   shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
-
-  // 3. Set ambient light (so the "dark" sides aren't pitch black)
   int ambientLoc = GetShaderLocation(shader, "ambient");
   float ambient[4] = {0.2f, 0.2f, 0.2f, 1.0f};
   SetShaderValue(shader, ambientLoc, ambient, SHADER_UNIFORM_VEC4);
-
-  // 4. Create a light (e.g., a "Sun" or a neon pulse)
   Light sun = CreateLight(LIGHT_POINT, (Vector3){0, 4, 0}, Vector3Zero(), WHITE,
                           shader);
 BEGIN:
@@ -113,9 +107,12 @@ BEGIN:
   EndDrawing();
 
   if (WindowShouldClose())
-    goto END;
+    goto CLEAN;
   goto BEGIN;
-END:
+CLEAN:
+  UnloadMusicStream(music);
+  UnloadShader(shader);
+EXIT:  
   CloseWindow();
   return 0;
 }

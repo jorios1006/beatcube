@@ -84,12 +84,8 @@
 - **Other Keys**: Polling not active, no logic assigned (yet) (W, S, Q, Z, X, C, LCTRL)
 
 ## Known Issues
-- Music file path is hardcoded ("metrome.mp3"). Missing file causes runtime failure.
-- `UnloadMusicStream` is not called before exit; relies on OS cleanup.
 - Beat synchronization relies on `GetMusicTimePlayed` starting at 0; does not account for audio latency or buffer delay.
-- [FIXED] `KeyboardState` struct allocates memory on the stack every frame despite being temporary.
 - `GameState` fields `speed` and `distance` are defined but unused.
-- Variable `currentBeat` calculated during initialization is never used.
 
 ## Current Goals
 - Implement note spawning and collision detection.
