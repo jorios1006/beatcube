@@ -8,6 +8,7 @@
 #define TARGETFPS 60
 #define LANE_WIDTH 2.0f
 #define HALF_LANE_WIDTH LANE_WIDTH / 2
+#define SMOOTHING_SPEED 5.0f
 typedef struct {
   int lane;      // -1, 0, 1
   float visualX; // For smooth sliding between lanes
@@ -40,16 +41,21 @@ int main(void) {
   gs.cubeScale = 1.0f;
   // -- AUDIO ---
   InitAudioDevice(); // Initialize audio hardware
-  Music music = LoadMusicStream("resources/audio/metrome.mp3");
-  if (!IsMusicValid(music))
-    goto EXIT;
+  Music music = LoadMusicStream("resources/audio/metronome.mp3");
+  if (!IsMusicValid(music)) {
+    TraceLog(LOG_ERROR, "Failed to load music");
+    goto CLEAN; // Jump to CLEAN instead of EXIT
+  }
+
   PlayMusicStream(music);
   float timePlayed = GetMusicTimePlayed(music);
   //--- SHADERS ---//
   Shader shader = LoadShader("resources/shaders/lighting.vs",
                              "resources/shaders/lighting.fs");
-  if (!IsShaderValid(shader))
-    goto EXIT;
+  if (!IsShaderValid(shader)) {
+    TraceLog(LOG_ERROR, "Failed to load shader");
+    goto CLEAN; // Jump to CLEAN instead of EXIT
+  }
   shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
   int ambientLoc = GetShaderLocation(shader, "ambient");
   float ambient[4] = {0.2f, 0.2f, 0.2f, 1.0f};
@@ -66,6 +72,10 @@ BEGIN:
     gs.lane--;
   if ((kb.RIGHT || kb.D) && gs.lane < 1)
     gs.lane++;
+  //------- CAMERA FOLLOW --------//
+  // Smoothly move camera to follow player X
+  camera.position.x = Lerp(camera.position.x, gs.visualX, 0.1f);
+  camera.target.x = Lerp(camera.target.x, gs.visualX, 0.1f);
   //------- AUDIO & BEAT LOGIC -----//
   UpdateMusicStream(music);
   timePlayed = GetMusicTimePlayed(music);
@@ -73,7 +83,10 @@ BEGIN:
   float sting = 1.0f - (gs.beatTimer / beatDuration);
   gs.cubeScale = 1.0f + (sting * 0.5f); // Grows by 50% on the beat
   //------- PHYSICS --------/
-  gs.visualX = Lerp(gs.visualX, (float)gs.lane * LANE_WIDTH, 0.2f);
+  float lerpAmount = SMOOTHING_SPEED * GetFrameTime();
+  if (lerpAmount > 1.0f)
+    lerpAmount = 1.0f; // Cap to prevent overshooting
+  gs.visualX = Lerp(gs.visualX, (float)gs.lane * LANE_WIDTH, lerpAmount);
 
   // --- SHADERS ---
   // Update camera position in shader
@@ -110,9 +123,12 @@ BEGIN:
     goto CLEAN;
   goto BEGIN;
 CLEAN:
-  UnloadMusicStream(music);
-  UnloadShader(shader);
-EXIT:  
+  if (IsMusicValid(music))
+    UnloadMusicStream(music);
+  if (IsShaderValid(shader))
+    UnloadShader(shader);
+  CloseAudioDevice();
+EXIT:
   CloseWindow();
   return 0;
 }
