@@ -3,12 +3,24 @@
 #include <math.h>
 #define RLIGHTS_IMPLEMENTATION
 #include "../include/rlights.h"
+
+/*----  The intention of this constants are to be use as fallback  ----*/
+/*----            Right now they are just placeholders             ----*/
 #define SCREENHEIGHT 400
 #define SCREENWIDTH 720
 #define TARGETFPS 60
 #define LANE_WIDTH 2.0f
-#define HALF_LANE_WIDTH LANE_WIDTH / 2
+#define LANE_AMOUNT 3
+#define PLANE_WIDTH LANE_WIDTH * LANE_AMOUNT
+#define HALF_LANE_WIDTH LANE_WIDTH / 2.0f
 #define SMOOTHING_SPEED 5.0f
+#define BPM 120.0f
+#define BEAT_DURATION 60.0f / BPM // 0.5s for 120 BPM
+#define PLANE_LENGHT SCREENHEIGHT * (2.0f / 3.0f)
+const Color OEL_BG = (Color){4, 12, 24, 255};
+const Color OEL_DIM = (Color){0, 80, 120, 255};
+const Color OEL_MID = (Color){0, 180, 255, 255};
+const Color OEL_BRIGHT = (Color){180, 240, 255, 255};
 typedef struct {
   int lane;      // -1, 0, 1
   float visualX; // For smooth sliding between lanes
@@ -23,21 +35,19 @@ typedef struct {
   bool X, C, Z, Q;
   bool LEFT, RIGHT;
 } KeyboardState;
-
+Camera3D camera = {0};
+GameState gs = {0};
+KeyboardState kb = {0};
 int main(void) {
-  const float BPM = 120.0f;
-  const float beatDuration = 60.0f / BPM; // 0.5s for 120 BPM
   InitWindow(SCREENWIDTH, SCREENHEIGHT, "window");
+  SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
   SetTargetFPS(TARGETFPS);
-  Camera3D camera = {0};
   camera.position = (Vector3){0.0f, 2.0f, 5.0f};
   camera.target = (Vector3){0.0f, 1.0f, 0.0f};
   camera.up = (Vector3){0.0f, 1.0f, 0.0f};
   camera.fovy = 45.0f;
   camera.projection = CAMERA_PERSPECTIVE;
   // -- GAME STATE --
-  GameState gs = {0};
-  KeyboardState kb = {0};
   gs.cubeScale = 1.0f;
   // -- AUDIO ---
   InitAudioDevice(); // Initialize audio hardware
@@ -79,9 +89,9 @@ BEGIN:
   //------- AUDIO & BEAT LOGIC -----//
   UpdateMusicStream(music);
   timePlayed = GetMusicTimePlayed(music);
-  gs.beatTimer = fmodf(timePlayed, beatDuration);
-  float sting = 1.0f - (gs.beatTimer / beatDuration);
-  gs.cubeScale = 1.0f + (sting * 0.5f); // Grows by 50% on the beat
+  gs.beatTimer = fmodf(timePlayed, BEAT_DURATION);
+  float sting = 1.0f - (gs.beatTimer / BEAT_DURATION);
+  gs.cubeScale = (1.0f + (sting * 0.5f)) * 0.5f; // Grows by 50% on the beat
   //------- PHYSICS --------/
   float lerpAmount = SMOOTHING_SPEED * GetFrameTime();
   if (lerpAmount > 1.0f)
@@ -99,24 +109,26 @@ BEGIN:
 
   //------- DRAWING --------//
   BeginDrawing();
-  ClearBackground(BLACK);
+  ClearBackground(OEL_BG);
   //------- 3D --------//
   BeginMode3D(camera);
   BeginShaderMode(shader); // <--- EVERYTHING between these two uses lighting
   // FLOOR
-  DrawPlane((Vector3){0, 0, 0}, (Vector2){10, 100}, DARKGRAY);
+  DrawPlane((Vector3){0, 0, 0}, (Vector2){PLANE_WIDTH, PLANE_LENGHT}, OEL_BRIGHT);
   // LANES
-  DrawLine3D((Vector3){-HALF_LANE_WIDTH, 0.01f, 50},
-             (Vector3){-HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
-  DrawLine3D((Vector3){HALF_LANE_WIDTH, 0.01f, 50},
-             (Vector3){HALF_LANE_WIDTH, 0.01f, -50}, GRAY);
+  DrawLine3D((Vector3){-HALF_LANE_WIDTH, 0.01f, PLANE_LENGHT  / 2.0f},
+             (Vector3){-HALF_LANE_WIDTH, 0.01f, -PLANE_LENGHT / 2.0f}, GRAY);
+  DrawLine3D((Vector3){HALF_LANE_WIDTH, 0.01f, PLANE_LENGHT / 2.0f},
+             (Vector3){HALF_LANE_WIDTH, 0.01f, -PLANE_LENGHT / 2.0f}, GRAY);
   // PLAYER
   Vector3 cubePos = {gs.visualX, (gs.cubeScale * 0.5f), 0.0f};
-  DrawCube(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, BLUE);
-  DrawCubeWires(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, WHITE);
+  DrawCube(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, OEL_MID);
+  DrawCubeWires(cubePos, gs.cubeScale, gs.cubeScale, gs.cubeScale, OEL_BRIGHT);
   EndShaderMode();
   EndMode3D();
-  DrawFPS(10, 10);
+  DrawRectangleLines(5, 5, SCREENWIDTH - 10, SCREENHEIGHT - 10, OEL_DIM);
+  DrawText("PONYONEER GRAPHIC ENGINE v1.0", 20, 20, 10, OEL_MID);
+  DrawFPS(SCREENWIDTH - 80, 20);
   EndDrawing();
 
   if (WindowShouldClose())

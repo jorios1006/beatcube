@@ -2,8 +2,12 @@
 
 ## System Requirements
 - **Language:** C (C99 or later for designated initializers)
-- **Libraries:** raylib, raymath, math.h
-- **Assets:** `metronome.mp3` (must exist in `resources/audio/` directory)
+- **Libraries:** raylib, raymath, math.h, rlights.h
+- **Assets:** 
+  - `resources/audio/metronome.mp3` (must exist in directory)
+  - `resources/shaders/lighting.vs`
+  - `resources/shaders/lighting.fs`
+  - `include/rlights.h`
 
 ## Configuration Constants
 | Constant | Value | Description |
@@ -12,9 +16,21 @@
 | `SCREENHEIGHT` | 400 | Window height in pixels |
 | `TARGETFPS` | 60 | Target frames per second |
 | `LANE_WIDTH` | 2.0f | Distance between lanes in world units |
+| `LANE_AMOUNT` | 3 | Total number of lanes |
+| `PLANE_WIDTH` | `LANE_WIDTH * LANE_AMOUNT` | Floor plane width |
+| `PLANE_LENGHT` | `SCREENHEIGHT * (2.0f / 3.0f)` | Floor plane length |
+| `HALF_LANE_WIDTH` | `LANE_WIDTH / 2.0f` | Half lane width for boundary lines |
+| `SMOOTHING_SPEED` | 5.0f | Lane interpolation speed |
 | `BPM` | 120.0f | Beats per minute for music synchronization |
-| `beatDuration` | 60.0 / BPM (0.5s) | Duration of one beat in seconds |
-| `SMOOTHING_SPEED` | 5.0f | Lane interpolation speed (frame-independent) |
+| `BEAT_DURATION` | `60.0f / BPM` (0.5s) | Duration of one beat in seconds |
+
+## Color Palette (OEL Theme)
+| Constant | RGB Values | Usage |
+|----------|------------|-------|
+| `OEL_BG` | (4, 12, 24) | Background color |
+| `OEL_DIM` | (0, 80, 120) | UI borders |
+| `OEL_MID` | (0, 180, 255) | Player cube |
+| `OEL_BRIGHT` | (180, 240, 255) | Cube wires, floor |
 
 ## Data Structures
 
@@ -40,24 +56,24 @@
 
 ### Initialization
 1. Initialize Window (720x400)
-2. Set Target FPS to 60
-3. Configure Camera3D
+2. Set Config Flags: `FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT`
+3. Set Target FPS to 60
+4. Configure Camera3D
    - Position: (0, 2, 5)
    - Target: (0, 1, 0)
    - Up: (0, 1, 0)
    - FOV: 45
    - Projection: Perspective
-4. Initialize GameState
-   - `cubeScale`: 1.0
-5. Initialize Audio Device
-6. Load Music Stream (`resources/audio/metronome.mp3`)
+5. Initialize GameState (`cubeScale`: 1.0)
+6. Initialize Audio Device
+7. Load Music Stream (`resources/audio/metronome.mp3`)
    - **On Failure:** Goto `CLEAN`
-7. Play Music Stream
-8. Load Shader (`resources/shaders/lighting.vs`, `lighting.fs`)
+8. Play Music Stream
+9. Load Shader (`resources/shaders/lighting.vs`, `lighting.fs`)
    - **On Failure:** Goto `CLEAN`
-9. Configure Shader Lighting
-   - Set ambient light values
-   - Create point light source
+10. Configure Shader Lighting
+    - Set ambient light values (0.2, 0.2, 0.2, 1.0)
+    - Create point light source at (0, 4, 0)
 
 ### Main Loop (Label: BEGIN)
 1. **Check Exit Condition**
@@ -66,39 +82,45 @@
    - Poll keyboard state into `KeyboardState` struct
    - If (LEFT or A) AND `lane` > -1 → Decrement `lane`
    - If (RIGHT or D) AND `lane` < 1 → Increment `lane`
-3. **Audio & Beat Logic**
+3. **Camera Follow**
+   - Lerp `camera.position.x` toward `gs.visualX` (factor: 0.1)
+   - Lerp `camera.target.x` toward `gs.visualX` (factor: 0.1)
+4. **Audio & Beat Logic**
    - Update Music Stream
    - Get `timePlayed`
-   - Calculate `beatTimer` = `timePlayed` % `beatDuration`
-   - Calculate `sting` = 1.0 - (`beatTimer` / `beatDuration`)
-   - Update `cubeScale` = 1.0 + (`sting` * 0.5)
-4. **Physics**
-   - Update `visualX` = Lerp(current, `lane` * `LANE_WIDTH`, `SMOOTHING_SPEED * GetFrameTime()`)
+   - Calculate `beatTimer` = `timePlayed` % `BEAT_DURATION`
+   - Calculate `sting` = 1.0 - (`beatTimer` / `BEAT_DURATION`)
+   - Update `cubeScale` = `(1.0 + (sting * 0.5)) * 0.5`
+5. **Physics**
+   - Calculate `lerpAmount` = `SMOOTHING_SPEED * GetFrameTime()` (capped at 1.0)
+   - Update `visualX` = Lerp(current, `lane * LANE_WIDTH`, `lerpAmount`)
    - *Frame-independent interpolation*
-5. **Shader Updates**
+6. **Shader Updates**
    - Update camera position in shader
-   - Update light values
-6. **Rendering**
+   - Update light values via `UpdateLightValues()`
+7. **Rendering**
    - Begin Drawing
-   - Clear Background (BLACK)
+   - Clear Background (`OEL_BG`)
    - Begin 3D Mode
    - Begin Shader Mode
-   - Draw Plane (10x100, DARKGRAY)
-   - Draw Lane Lines (GRAY) at x = +/- `LANE_WIDTH`/2
-   - Calculate `cubePos` (x: `visualX`, y: `cubeScale` * 0.5, z: 0)
-   - Draw Cube (BLUE) scaled by `cubeScale`
-   - Draw Cube Wires (WHITE) scaled by `cubeScale`
+   - Draw Plane (`PLANE_WIDTH` x `PLANE_LENGHT`, `OEL_BRIGHT`)
+   - Draw Lane Lines (`GRAY`) at x = +/- `HALF_LANE_WIDTH`
+   - Calculate `cubePos` (x: `visualX`, y: `cubeScale * 0.5`, z: 0)
+   - Draw Cube (`OEL_MID`) scaled by `cubeScale`
+   - Draw Cube Wires (`OEL_BRIGHT`) scaled by `cubeScale`
    - End Shader Mode
    - End 3D Mode
+   - Draw UI Border (`OEL_DIM`)
+   - Draw Title: "PONYONEER GRAPHIC ENGINE v1.0" (`OEL_MID`)
    - Draw FPS Counter
    - End Drawing
-7. **Loop Control**
+8. **Loop Control**
    - Goto `BEGIN` (Intentional infinite loop structure)
 
 ### Termination (Label: CLEAN → EXIT)
 1. **CLEAN Section** (Resource Deallocation)
-   - Unload Music Stream (if valid)
-   - Unload Shader (if valid)
+   - Unload Music Stream (if valid via `IsMusicValid()`)
+   - Unload Shader (if valid via `IsShaderValid()`)
    - Close Audio Device
 2. **EXIT Section**
    - Close Window
@@ -116,28 +138,31 @@
 |-------|--------|-------|
 | Beat synchronization relies on `GetMusicTimePlayed` starting at 0 | ️ Active | Does not account for audio latency or buffer delay |
 | `GameState` fields `speed` and `distance` are defined but unused | ️ Active | Reserved for future gameplay mechanics |
-| Filename typo: `metrome.mp3` vs `metronome.mp3` | ️ Fixed | Verify correct filename in resources directory |
-| Camera is static at x=0 while player moves along X axis | ️ Fixed? | Player may move off-screen at lane extremes |
-| No resource validation before unloading in cleanup |  Fixed | Now checks `IsMusicValid`/`IsShaderValid` before unload |
-| Audio device not closed on exit |  Fixed | `CloseAudioDevice()` added to CLEAN section |
-| Frame-rate dependent smoothing |  Fixed | Now uses `GetFrameTime()` for delta-time interpolation |
+| Camera follow may cause disorientation at lane extremes | ️ Active | Camera lerps but may not match player speed perfectly |
 
 ## Current Goals
 | Goal | Priority | Status |
 |------|----------|--------|
 | Implement note spawning and collision detection | High |  Planned |
 | Add audio analysis for dynamic beat detection instead of fixed BPM | High |  Planned |
-| Expand lane system beyond 3 lanes | Medium | Planned |
+| Expand lane system beyond 3 lanes | Medium |  Planned |
 | Implement score tracking | Medium |  Planned |
-| Add camera follow system for player X position | Medium |  Planned |
 | Add resource cleanup for audio streams explicitly | Low |  Complete |
 | Fix frame-independent physics | Low |  Complete |
+| Add camera follow system | Low |  Complete |
 
 ## Code Structure Notes
 - **Goto Usage:** Intentional for cleanup flow (`BEGIN` → `CLEAN` → `EXIT`)
 - **Resource Management:** All exit paths go through `CLEAN` to prevent leaks
 - **Validation:** Resources checked with `IsMusicValid()`/`IsShaderValid()` before unload
 - **Delta Time:** Physics calculations use `GetFrameTime()` for frame independence
+- **Global State:** `camera`, `gs`, `kb` declared at global scope for accessibility
+- **Lighting:** Uses `rlights.h` library for shader-based lighting system
+
+## Build Instructions
+```bash
+gcc main.c -o soundcube -lraylib -lm -lopengl32 -lgdi32 -lwinmm
+```
 
 ## Directory Structure
 ```
