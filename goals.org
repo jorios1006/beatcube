@@ -1,0 +1,58 @@
+#+TITLE: BEATCUBE
+#+AUTHOR: Project Lead
+#+STARTUP: showall indent
+
+* PROJECT: OEL ARCADE
+** Core Aesthetic: Pioneer OEL x PC-98 x Demoscene
+** License: AGPLv3 (Open Source Code / Compressed Binary Assets)
+
+* TODO UI & Visuals (The "Chrome")
+** TODO Main Menu: Pioneer "Movie 1/2/3" style light-up navigation
+*** TODO Map input to toggle emissive textures on button quads
+*** TODO Implement "OEL Glow" pulse effect using a sine-driven alpha mask
+** TODO Stylized Rendering: Cel-shading + Texel Splatting
+*** TODO Implement a basic Sobel filter for edge detection
+*** TODO Research "Texel Splatting" for quantization to maintain pixel-art look on 3D models
+*** TODO Build a simple Cel-shader with 3 levels of lighting (Step-based)
+** TODO Dithering: Bayer/Ordered dithering
+*** TODO Write a GLSL post-processing shader with a 4x4 or 8x8 Bayer matrix
+*** TODO Hook shader into the main RenderTarget flow
+** TODO Visual Documentation
+*** TODO Design the 640x400 "Cockpit" layout frame in a mock-up tool
+*** TODO Define the "Electric Blue" palette hex codes in a shared header
+
+* TODO Gameplay: "Sky-Board Runner"
+** TODO Core Mechanic: Endless runner with lane-switching
+*** TODO Implement procedurally scrolling environment chunks
+*** TODO Define obstacle "patterns" (Walls, ducking-hazards, etc.)
+** TODO Parry System: High-risk timing
+*** TODO Define "Parry Window" timing logic based on current BPM
+*** TODO Add "Clash" visual effect (Flash + Frame Freeze) on successful parry
+** TODO The "F" Rank Challenge: Passive avoidance
+*** TODO Implement "No-Action" flag logic (detecting zero input but survival)
+*** TODO Reward system for "Zen" playstyle where player never hits or parries
+** TODO DMC-Style Scoring: HUD element
+*** TODO Create logic for Score Multipliers (A -> S -> SS -> SSS)
+*** TODO Create rank "deterioration" timer (Rank drops if idle)
+
+* TODO Procedural Content & Tooling
+** TODO Audio-to-Level Pipe
+*** TODO Learn and implement FFT (Fast Fourier Transform) using raylib/kissfft
+*** TODO Implement "Peak Detection" to trigger obstacle spawns on drum kicks
+*** TODO Frequency analysis to determine obstacle type (Low=Floor, High=Ceiling)
+** TODO Standalone Editor: Dear ImGui app
+*** TODO Implement "Timeline" view for placing obstacles manually
+*** TODO Save/Load system for .OEL level files
+** TODO Community Sharing: JSON format
+*** TODO Define Level Schema (BPM, Audio Metadata, Obstacle Array)
+
+* TODO Technical Constraints (The "Demoscene" Vibe)
+** TODO Binary Compression
+*** TODO Integrate LZ4 or Zlib for asset packing
+*** TODO Create a "Virtual File System" (VFS) to read from compressed archives
+** TODO Hyper-Portability
+*** TODO Audit C dependencies to ensure zero-install requirement
+*** TODO Test build size; target < 10MB for the full binary
+** TODO Open Source Structure
+*** TODO Separate AGPLv3 logic into a standalone library
+*** TODO Document build process for AGPL compliance
